@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  --color-primary: #16a34a;
+  --color-secondary: #f59e0b;
+  --color-accent: #dcfce7;
+  --color-background: #f9fafb;
+  --color-dark: #1a1a1a;
+
+  --font-outfit: "Outfit", sans-serif;
+
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+:root {
+  font-family: var(--font-outfit);
+  background-color: var(--color-background);
+}
+
+body {
+  @apply text-slate-900 overflow-x-hidden;
+}
+
+.glass {
+  @apply bg-white/70 backdrop-blur-lg border border-white/30 shadow-glass;
+}
+
+.btn-primary {
+  @apply px-6 py-2 bg-primary text-white rounded-full font-medium transition-all hover:bg-primary/90 active:scale-95 shadow-lg shadow-green-200;
+}
+
+.card-hover {
+  @apply transition-transform duration-300 hover:-translate-y-2;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary/30 rounded-full hover:bg-primary/50;
+}
