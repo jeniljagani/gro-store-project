@@ -80,7 +80,8 @@ export default function OrderTracking() {
     };
 
     const setupSocket = () => {
-        const socket = io();
+        const backendUrl = import.meta.env.VITE_API_URL || '';
+        const socket = io(backendUrl);
         socketRef.current = socket;
         socket.on('connect', () => socket.emit('joinOrder', id));
         socket.on('orderUpdate', (data) => {
