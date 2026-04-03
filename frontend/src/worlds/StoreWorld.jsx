@@ -121,7 +121,7 @@ const StoreWorld = () => {
         <div className="h-screen relative overflow-hidden bg-white">
             {/* 3D Environment */}
             <div className="absolute inset-0 z-0">
-                <Canvas shadows dpr={[1, 2]}>
+                <Canvas shadows dpr={[1, 2]} eventSource={document.getElementById('root')} eventPrefix="client">
                     <PerspectiveCamera makeDefault position={[0, 0, 8]} />
                     <ambientLight intensity={0.5} />
                     <pointLight position={[10, 10, 10]} intensity={1} />

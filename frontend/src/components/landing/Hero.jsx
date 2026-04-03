@@ -38,7 +38,7 @@ const Hero = () => {
     return (
         <div className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
             <div className="absolute inset-0 z-0">
-                <Canvas dpr={[1, 1.5]}>
+                <Canvas dpr={[1, 1.5]} eventSource={document.getElementById('root')} eventPrefix="client">
                     <PerspectiveCamera makeDefault position={[0, 0, 5]} />
                     <ambientLight intensity={0.5} />
                     <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} castShadow />

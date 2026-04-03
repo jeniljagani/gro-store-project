@@ -82,7 +82,7 @@ const RecipeVault = () => {
         <div className="h-screen relative bg-slate-950 overflow-hidden">
             {/* 3D Environment */}
             <div className="absolute inset-0 z-0">
-                <Canvas dpr={[1, 2]}>
+                <Canvas dpr={[1, 2]} eventSource={document.getElementById('root')} eventPrefix="client">
                     <PerspectiveCamera makeDefault position={[0, 10, 15]} fov={50} />
                     <ambientLight intensity={0.1} />
                     <pointLight position={[0, 0, 0]} intensity={2} color="#fbbf24" />
