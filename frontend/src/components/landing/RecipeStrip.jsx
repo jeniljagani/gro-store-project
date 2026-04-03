@@ -96,7 +96,7 @@ const RecipeStrip = () => {
                 console.log('RecipeStrip: Fetching recipes...');
                 const { data } = await axios.get('/api/recipes');
                 console.log('RecipeStrip: API data:', data);
-                if (data && data.length > 0) {
+                if (data && Array.isArray(data) && data.length > 0) {
                     setRecipes(data);
                 } else {
                     // Fallback mock recipe if API is empty for UI testing
