@@ -63,7 +63,8 @@ function CheckoutForm({ cartItems, subtotal, shippingAddress, onSuccess }) {
             }
 
             if (result.paymentIntent.status === 'succeeded') {
-                // 3. Create order in our backend
+                const isValidObjectId = (id) => /^[a-f\d]{24}$/i.test(id);
+
                 const orderRes = await fetch('/api/orders', {
                     method: 'POST',
                     headers: {
@@ -76,7 +77,7 @@ function CheckoutForm({ cartItems, subtotal, shippingAddress, onSuccess }) {
                             qty: item.qty,
                             image: item.image,
                             price: item.price,
-                            product: item._id
+                            product: isValidObjectId(item._id) ? item._id : null
                         })),
                         shippingAddress,
                         paymentMethod: 'stripe',

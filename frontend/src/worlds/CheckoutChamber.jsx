@@ -431,13 +431,15 @@ const CheckoutChamber = () => {
                 scheduledAt = date.toISOString();
             }
 
+            const isValidObjectId = (id) => /^[a-f\d]{24}$/i.test(id);
+
             await axios.post('/api/orders', {
                 orderItems: cartItems.map(item => ({
                     name: item.name,
                     qty: item.qty,
                     image: item.image,
                     price: item.price,
-                    product: item._id,
+                    product: isValidObjectId(item._id) ? item._id : null,
                 })),
                 shippingAddress: {
                     address: `${addr?.house || ''}, ${addr?.area || ''}`,

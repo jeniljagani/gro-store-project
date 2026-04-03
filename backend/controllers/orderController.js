@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const mongoose = require('mongoose');
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -21,6 +22,16 @@ exports.addOrderItems = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        // Sanitize orderItems — recipe ingredients may have fake string IDs, not real ObjectIds
+        // We set product to null for those items instead of crashing with BSONError
+        const sanitizedItems = orderItems.map(item => ({
+            name: item.name,
+            qty: item.qty,
+            image: item.image,
+            price: item.price,
+            product: mongoose.isValidObjectId(item.product) ? item.product : null,
+        }));
+
         // Handle Wallet Payment
         if (paymentMethod === 'wallet') {
             if (user.walletBalance < totalPrice) {
@@ -34,7 +45,7 @@ exports.addOrderItems = async (req, res) => {
 
         const order = new Order({
             user: req.user._id,
-            orderItems,
+            orderItems: sanitizedItems,
             shippingAddress,
             paymentMethod,
             totalPrice: Number(totalPrice),

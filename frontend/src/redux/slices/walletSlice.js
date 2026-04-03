@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import axios from '../../utils/axiosConfig';
 
 export const getWalletBalance = createAsyncThunk(
     'wallet/getBalance',

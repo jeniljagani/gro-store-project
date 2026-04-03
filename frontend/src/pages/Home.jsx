@@ -1,10 +1,14 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import axios from '../utils/axiosConfig';
 import { ShoppingCart, ArrowRight, Play, Star, ChevronRight, Zap, ShieldCheck, Truck, Leaf, Award } from 'lucide-react';
 import ProductCard from '../components/product/ProductCard';
 
 const Home = () => {
     const navigate = useNavigate();
+    const [products, setProducts] = useState([]);
+    const [loadingProducts, setLoadingProducts] = useState(true);
 
     const categories = [
         { name: 'Vegetables', icon: '🥦', color: 'bg-green-50', link: '/category/vegetables', emoji: '🥦' },
@@ -15,13 +19,23 @@ const Home = () => {
         { name: 'Care', icon: '🧴', color: 'bg-pink-50', link: '/category/care', emoji: '🧴' },
     ];
 
-    // Mock products for UI demonstration
-    const products = [
-        { _id: '1', name: 'Fresh Avocado', price: 120, image: 'https://img.freepik.com/free-photo/avocado-cut-half-with-seed-inside-isolated-white_185193-111000.jpg', category: 'Fruits' },
-        { _id: '2', name: 'Organic Broccoli', price: 45, image: 'https://img.freepik.com/free-photo/fresh-broccoli-isolated-white-background_185193-111005.jpg', category: 'Fresh Vegetables' },
-        { _id: '3', name: 'Almond Milk', price: 299, image: 'https://img.freepik.com/free-photo/glass-bottle-milk-isolated-white-background_185193-111020.jpg', category: 'Dairy' },
-        { _id: '4', name: 'Red Apples', price: 180, image: 'https://img.freepik.com/free-photo/red-apple-isolated-white-background_185193-111015.jpg', category: 'Fruits' }
-    ];
+    useEffect(() => {
+        const fetchTrendingProducts = async () => {
+            try {
+                setLoadingProducts(true);
+                const { data } = await axios.get('/api/products?pageNumber=1');
+                // Show only isTrending products, limited to 8; fallback to first 8
+                const trending = data.products.filter(p => p.isTrending).slice(0, 8);
+                setProducts(trending.length > 0 ? trending : data.products.slice(0, 8));
+            } catch (err) {
+                console.error('Failed to fetch products:', err);
+                setProducts([]);
+            } finally {
+                setLoadingProducts(false);
+            }
+        };
+        fetchTrendingProducts();
+    }, []);
 
     return (
         <div className="pt-24 pb-20">
@@ -181,9 +195,32 @@ const Home = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {products.map(p => (
-                        <ProductCard key={p._id} product={p} />
-                    ))}
+                    {loadingProducts
+                        ? Array.from({ length: 8 }).map((_, i) => (
+                            <div key={i} className="glass p-6 rounded-[2.5rem] animate-pulse">
+                                <div className="aspect-square bg-slate-200 rounded-3xl mb-6" />
+                                <div className="space-y-3">
+                                    <div className="h-3 bg-slate-200 rounded w-1/3" />
+                                    <div className="h-5 bg-slate-200 rounded w-2/3" />
+                                    <div className="flex justify-between items-center pt-2">
+                                        <div className="h-6 bg-slate-200 rounded w-1/4" />
+                                        <div className="w-12 h-12 bg-slate-200 rounded-2xl" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                        : products.length > 0
+                            ? products.map(p => (
+                                <ProductCard key={p._id} product={p} />
+                            ))
+                            : (
+                                <div className="col-span-4 text-center py-20 text-slate-400">
+                                    <p className="text-5xl mb-4">🛒</p>
+                                    <p className="text-lg font-semibold">Products are being loaded...</p>
+                                    <p className="text-sm mt-2">Make sure the backend is running and the database is seeded.</p>
+                                </div>
+                            )
+                    }
                 </div>
             </section>
         </div>
