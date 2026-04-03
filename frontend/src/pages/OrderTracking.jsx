@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { io } from 'socket.io-client';
+
 import { Package, Check, Truck, ChefHat, Clock, MapPin, ArrowLeft, Star, IndianRupee } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
@@ -65,9 +65,18 @@ export default function OrderTracking() {
     const [loading,       setLoading]       = useState(true);
     const [deliveryPos,   setDeliveryPos]   = useState(null);
     const [currentStatus, setCurrentStatus] = useState('pending');
-    const socketRef = useRef(null);
+    useEffect(() => { 
+        fetchOrder(); 
+        
+        // Poll for updates every 3 seconds since WebSockets are disabled for Serverless
+        const interval = setInterval(() => {
+            if (currentStatus !== 'delivered' && currentStatus !== 'cancelled') {
+                fetchOrder();
+            }
+        }, 3000);
 
-    useEffect(() => { fetchOrder(); setupSocket(); return () => socketRef.current?.disconnect(); }, [id]);
+        return () => clearInterval(interval);
+    }, [id, currentStatus]);
 
     const fetchOrder = async () => {
         try {
@@ -77,18 +86,6 @@ export default function OrderTracking() {
             setCurrentStatus(data.status || 'pending');
             setDeliveryPos(data.deliveryLocation?.lat ? data.deliveryLocation : STORE_POS);
         } catch (e) { console.error(e); } finally { setLoading(false); }
-    };
-
-    const setupSocket = () => {
-        const backendUrl = import.meta.env.VITE_API_URL || '';
-        const socket = io(backendUrl);
-        socketRef.current = socket;
-        socket.on('connect', () => socket.emit('joinOrder', id));
-        socket.on('orderUpdate', (data) => {
-            setCurrentStatus(data.status);
-            if (data.deliveryLocation?.lat) setDeliveryPos(data.deliveryLocation);
-        });
-        socket.on('locationUpdate', loc => setDeliveryPos({ lat: loc.lat, lng: loc.lng }));
     };
 
     const currentStepIndex = STATUS_STEPS.findIndex(s => s.key === currentStatus);

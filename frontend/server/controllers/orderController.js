@@ -22,8 +22,7 @@ exports.addOrderItems = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Sanitize orderItems — recipe ingredients may have fake string IDs, not real ObjectIds
-        // We set product to null for those items instead of crashing with BSONError
+        // Sanitize orderItems
         const sanitizedItems = orderItems.map(item => ({
             name: item.name,
             qty: item.qty,
@@ -75,11 +74,6 @@ exports.addOrderItems = async (req, res) => {
             }
         }
 
-        // Start auto-progression simulation for confirmed orders
-        if (isPaid) {
-            startDeliverySimulation(createdOrder._id, req.app.get('io'));
-        }
-
         res.status(201).json(createdOrder);
     } catch (error) {
         console.error('Order creation error:', error);
@@ -87,11 +81,45 @@ exports.addOrderItems = async (req, res) => {
     }
 };
 
-// @desc    Get order by ID
+// @desc    Get order by ID (with automated serverless progression logic)
 // @route   GET /api/orders/:id
 exports.getOrderById = async (req, res) => {
-    const order = await Order.findById(req.params.id).populate('user', 'name email');
+    let order = await Order.findById(req.params.id).populate('user', 'name email');
+    
     if (order) {
+        // Automatic Progression Simulation for Serverless
+        if (order.isPaid && order.status !== 'delivered' && order.status !== 'cancelled') {
+            const ageMs = Date.now() - new Date(order.createdAt).getTime();
+            
+            // Surat, Gujarat, India coordinates
+            const storeLat = 21.1702;
+            const storeLng = 72.8311;
+            const destLat = 21.1950;
+            const destLng = 72.8600;
+
+            let updated = false;
+
+            if (ageMs > 90000 && order.status !== 'delivered') {
+                order.status = 'delivered';
+                order.isDelivered = true;
+                order.deliveredAt = new Date();
+                order.deliveryLocation = { lat: destLat, lng: destLng };
+                updated = true;
+            } else if (ageMs > 30000 && order.status !== 'out_for_delivery') {
+                order.status = 'out_for_delivery';
+                // Midpoint calculation rough
+                order.deliveryLocation = { lat: (storeLat + destLat)/2, lng: (storeLng + destLng)/2 };
+                updated = true;
+            } else if (ageMs > 15000 && order.status !== 'preparing') {
+                order.status = 'preparing';
+                order.deliveryLocation = { lat: storeLat, lng: storeLng };
+                updated = true;
+            }
+
+            if (updated) {
+                await order.save();
+            }
+        }
         res.json(order);
     } else {
         res.status(404).json({ message: 'Order not found' });
@@ -105,7 +133,7 @@ exports.getMyOrders = async (req, res) => {
     res.json(orders);
 };
 
-// @desc    Update order status (admin or simulation)
+// @desc    Update order status
 // @route   PUT /api/orders/:id/status
 exports.updateOrderStatus = async (req, res) => {
     const { status, deliveryLocation } = req.body;
@@ -121,95 +149,8 @@ exports.updateOrderStatus = async (req, res) => {
         }
 
         const updated = await order.save();
-
-        // Emit via Socket.IO
-        const io = req.app.get('io');
-        if (io) {
-            io.to(order._id.toString()).emit('orderUpdate', {
-                status: updated.status,
-                deliveryLocation: updated.deliveryLocation,
-                isDelivered: updated.isDelivered
-            });
-        }
-
         res.json(updated);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
-
-// Delivery simulation: store -> customer, over ~2 minutes
-function startDeliverySimulation(orderId, io) {
-    const statuses = ['preparing', 'out_for_delivery', 'delivered'];
-    const delays = [15000, 30000, 90000]; // 15s, 30s, 90s
-
-    // Surat, Gujarat, India coordinates
-    const storeLat = 21.1702;
-    const storeLng = 72.8311;
-    // Customer nearby in Surat
-    const destLat = 21.1950;
-    const destLng = 72.8600;
-
-    statuses.forEach(async (status, i) => {
-        setTimeout(async () => {
-            try {
-                const order = await Order.findById(orderId);
-                if (!order || order.status === 'cancelled') return;
-
-                order.status = status;
-
-                if (status === 'out_for_delivery') {
-                    order.deliveryLocation = { lat: storeLat, lng: storeLng };
-                }
-                if (status === 'delivered') {
-                    order.isDelivered = true;
-                    order.deliveredAt = new Date();
-                    order.deliveryLocation = { lat: destLat, lng: destLng };
-                }
-
-                await order.save();
-
-                if (io) {
-                    io.to(orderId.toString()).emit('orderUpdate', {
-                        status,
-                        deliveryLocation: order.deliveryLocation,
-                        isDelivered: order.isDelivered
-                    });
-
-                    // Animate delivery boy movement during out_for_delivery
-                    if (status === 'out_for_delivery') {
-                        animateDelivery(orderId, storeLat, storeLng, destLat, destLng, io);
-                    }
-                }
-            } catch (err) {
-                console.error('Simulation error:', err);
-            }
-        }, delays[i]);
-    });
-}
-
-// Smoothly move delivery boy from store to destination
-function animateDelivery(orderId, fromLat, fromLng, toLat, toLng, io) {
-    const steps = 20;
-    const interval = 3000; // every 3 seconds
-    let step = 0;
-
-    const timer = setInterval(async () => {
-        step++;
-        const progress = step / steps;
-        const lat = fromLat + (toLat - fromLat) * progress;
-        const lng = fromLng + (toLng - fromLng) * progress;
-
-        const location = { lat, lng };
-
-        try {
-            await Order.findByIdAndUpdate(orderId, { deliveryLocation: location });
-        } catch (e) {}
-
-        if (io) {
-            io.to(orderId.toString()).emit('locationUpdate', { lat, lng });
-        }
-
-        if (step >= steps) clearInterval(timer);
-    }, interval);
-}
