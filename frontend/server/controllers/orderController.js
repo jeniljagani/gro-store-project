@@ -9,10 +9,12 @@ exports.addOrderItems = async (req, res) => {
     const { orderItems, shippingAddress, paymentMethod, totalPrice, deliveryType, scheduledAt, paymentIntentId } = req.body;
 
     if (orderItems && orderItems.length === 0) {
+        console.warn('Order failed: No items in cart');
         return res.status(400).json({ message: 'No items in the order. Please check your cart.' });
     }
 
     if (!shippingAddress || !shippingAddress.address || !shippingAddress.city || !shippingAddress.postalCode || !shippingAddress.country) {
+        console.warn('Order failed: Incomplete shipping address', shippingAddress);
         return res.status(400).json({ message: 'Shipping address is incomplete. Please ensure address, city, postal code, and country are provided.' });
     }
 

@@ -82,7 +82,13 @@ const connectDB = async () => {
     }
 };
 
-connectDB();
+connectDB().then(() => {
+    // Run local server if not on Vercel
+    if (!process.env.VERCEL) {
+        const PORT = process.env.PORT || 5000;
+        app.listen(PORT, () => console.log(`🚀 API Server running locally on port ${PORT} with DB connected!`));
+    }
+});
 
 // Export for Vercel Serverless
 module.exports = app;

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
+import axios from '../utils/axiosConfig'; // Added axios instance
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { clearCart } from '../redux/slices/cartSlice';
@@ -38,15 +39,9 @@ function CheckoutForm({ cartItems, subtotal, shippingAddress, onSuccess }) {
         setProcessing(true);
         try {
             // 1. Create payment intent on backend
-            const intentRes = await fetch('/api/payment/create-intent', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${user?.token}`
-                },
-                body: JSON.stringify({ amount: parseFloat(subtotal) })
-            });
-            const { clientSecret, paymentIntentId } = await intentRes.json();
+            // Using axiosInstance from ../utils/axiosConfig to ensure VITE_API_URL is used
+            const intentRes = await axios.post('/api/payment/create-intent', { amount: parseFloat(subtotal) });
+            const { clientSecret, paymentIntentId } = intentRes.data;
 
             // 2. Confirm payment with Stripe
             const result = await stripe.confirmCardPayment(clientSecret, {
@@ -65,28 +60,22 @@ function CheckoutForm({ cartItems, subtotal, shippingAddress, onSuccess }) {
             if (result.paymentIntent.status === 'succeeded') {
                 const isValidObjectId = (id) => /^[a-f\d]{24}$/i.test(id);
 
-                const orderRes = await fetch('/api/orders', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${user?.token}`
-                    },
-                    body: JSON.stringify({
-                        orderItems: cartItems.map(item => ({
-                            name: item.name,
-                            qty: item.qty,
-                            image: item.image,
-                            price: item.price,
-                            product: isValidObjectId(item._id) ? item._id : null
-                        })),
-                        shippingAddress,
-                        paymentMethod: 'stripe',
-                        totalPrice: parseFloat(subtotal),
-                        deliveryType: 'express',
-                        paymentIntentId
-                    })
+                const orderRes = await axios.post('/api/orders', {
+                    orderItems: cartItems.map(item => ({
+                        name: item.name,
+                        qty: item.qty,
+                        image: item.image,
+                        price: item.price,
+                        product: isValidObjectId(item._id) ? item._id : null
+                    })),
+                    shippingAddress,
+                    paymentMethod: 'stripe',
+                    totalPrice: parseFloat(subtotal),
+                    deliveryType: 'express',
+                    paymentIntentId
                 });
-                const order = await orderRes.json();
+
+                const order = orderRes.data;
                 dispatch(clearCart());
                 setSucceeded(true);
                 onSuccess(order._id);
